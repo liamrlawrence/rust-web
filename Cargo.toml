@@ -1,11 +1,7 @@
 [package]
-name = "rust_web"
+name = "rust-web"
 version = "0.1.0"
-authors = ["Liam Lawrence liamrlawrence@gmail.com"]
 edition = "2021"
-
-[lib]
-path = "src/lib.rs"
 
 [dependencies]
 # Base

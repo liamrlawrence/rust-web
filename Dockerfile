@@ -1,4 +1,4 @@
-FROM rust:1.69-slim-bullseye AS chef
+FROM rust:1.70-slim-bookworm AS chef
 LABEL description="Rust web server"
 WORKDIR /app
 RUN cargo install cargo-chef 
@@ -18,20 +18,20 @@ COPY --from=planner /app/recipe.json recipe.json
 RUN cargo chef cook --release --recipe-path recipe.json     # Compile dependencies
 
 COPY . .
-RUN cargo build --release --bin app
+RUN cargo build --release --bin app                         # Compile application
+
 
 
 
 # Run application
-FROM debian:bullseye-slim AS runtime
+FROM debian:bookworm-slim AS runtime
 WORKDIR /app
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates
-COPY --from=builder /app/target/release/app /usr/local/bin
-COPY --from=builder /app/static /app/static
-COPY --from=builder /app/templates /app/templates
 
-EXPOSE 8080
+COPY --from=builder /app/target/release/app /usr/local/bin
+
+EXPOSE 8000
 ENTRYPOINT ["/usr/local/bin/app"]
 
