@@ -10,6 +10,15 @@ use sqlx::PgPool;
 
 
 
+
+pub fn router(pool: PgPool) -> Router {
+    Router::new()
+        .route("/divide", post(divide_handler))
+        .with_state(pool)
+}
+
+
+
 #[derive(Deserialize)]
 struct MathRequest {
     x: f64,
@@ -17,7 +26,10 @@ struct MathRequest {
 }
 
 
-async fn divide_handler(State(pool): State<PgPool>, Json(payload): Json<MathRequest>) -> impl IntoResponse {
+async fn divide_handler(
+    State(pool): State<PgPool>,
+    Json(payload): Json<MathRequest>,
+) -> impl IntoResponse {
     let x = payload.x;
     let y = payload.y;
     println!("/api/math/divide - {x}, {y}");
@@ -35,7 +47,11 @@ async fn divide_handler(State(pool): State<PgPool>, Json(payload): Json<MathRequ
 }
 
 
-async fn perform_division(pool: PgPool, x: f64, y: f64) -> Result<f64, String> {
+async fn perform_division(
+    pool: PgPool,
+    x: f64,
+    y: f64,
+) -> Result<f64, String> {
     let row: (f64,) = sqlx::query_as("SELECT divide_xy($1, $2);")
         .bind(x)
         .bind(y)
@@ -44,12 +60,5 @@ async fn perform_division(pool: PgPool, x: f64, y: f64) -> Result<f64, String> {
         .unwrap();
 
     Ok(row.0)
-}
-
-
-pub fn router(pool: PgPool) -> Router {
-    Router::new()
-        .route("/api/math/divide", post(divide_handler))
-        .with_state(pool)
 }
 

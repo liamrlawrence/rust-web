@@ -17,12 +17,14 @@ async fn main() {
         .expect("Failed to connect to database");
 
     let app = Router::new()
-        .merge(http::math::router(pool));
+        .nest("/api/auth", http::auth::router(pool.clone()))
+        .nest("/api/math", http::math::router(pool.clone()))
+        .nest("/api/ai", http::ai::router(pool.clone()));
 
     let addr = SocketAddr::from(([0, 0, 0, 0], 8000));
     println!("Starting the server on {addr}...");
     axum::Server::bind(&addr)
-        .serve(app.into_make_service())
+        .serve(app.into_make_service_with_connect_info::<SocketAddr>())
         .await
         .unwrap();
 }
