@@ -7,7 +7,7 @@ use axum::{
     Router,
     http::{StatusCode, Request, Uri},
     extract::{State, Json, FromRequestParts},
-    routing::post,
+    routing::{post, get},
     response::{Html, IntoResponse}, async_trait, TypedHeader,
     headers::authorization::{Authorization, Bearer},
 };
@@ -22,7 +22,7 @@ pub fn router(pool: PgPool) -> Router {
         .route("/gpt2", post(chat_gpt_handler))
         .route("/gpt3", post(chat_gpt_handler))
         .route("/gpt4", post(chat_gpt_handler))
-        .route("/bills", post(ai_bills_handler)) 
+        .route("/bills", get(ai_bills_handler)) 
         .with_state(pool)
 }
 
@@ -103,7 +103,7 @@ async fn chat_gpt_handler(
 
     let model = match uri.path() {
         "/gpt3" => "gpt-3.5-turbo",
-        "/gpt4" => "gpt-4-0314",
+        "/gpt4" => "gpt-4-0613",
         &_ => {
             return(
                 StatusCode::INTERNAL_SERVER_ERROR,
@@ -112,7 +112,7 @@ async fn chat_gpt_handler(
                     message: "Success!".to_string(),
                     data: None,
                 })
-            );
+            )
         }
     };
 
@@ -144,16 +144,13 @@ async fn chat_gpt_handler(
         .await.unwrap();
 
 
-    // Return response
-    let response = ChatGptResponse {
-        status: 200,
-        message: "Success!".to_string(),
-        data: Some(res),
-    };
-
     return(
         StatusCode::OK,
-        Json(response),
+        Json(ChatGptResponse {
+            status: 200,
+            message: "Success!".to_string(),
+            data: Some(res)
+        }),
     )
 }
 
@@ -194,7 +191,7 @@ async fn ai_bills_handler(
 
     let mut response = AiBillsResponse {
         status: 200,
-        message: "Ok".to_string(),
+        message: "Success!".to_string(),
         data: AiBillsResponseData {
             billed_to: Vec::new(),
             model: Vec::new(),

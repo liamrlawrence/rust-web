@@ -78,7 +78,7 @@ async fn login_handler(
 
     let response = LoginResponse {
         status: 200,
-        message: "Successfully logged in".to_string(),
+        message: "Success!".to_string(),
     };
 
 
@@ -134,7 +134,7 @@ async fn refresh_token_handler(
 
     let response = RefreshResponse {
         status: 200,
-        message: "Refresh token generated".to_string(),
+        message: "Success!".to_string(),
     };
 
     return(
