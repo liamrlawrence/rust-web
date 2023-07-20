@@ -111,7 +111,7 @@ async fn chat_gpt_handler(
                     status: 200,
                     message: "Success!".to_string(),
                     data: None,
-                })
+                }),
             )
         }
     };

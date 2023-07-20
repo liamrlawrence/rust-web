@@ -2,7 +2,7 @@ use std::time::Duration;
 use std::net::SocketAddr;
 use axum::Router;
 use sqlx::postgres::PgPoolOptions;
-use tower_http::cors::{Any, CorsLayer};
+use tower_http::cors::{CorsLayer};
 
 mod http;
 
@@ -11,7 +11,14 @@ mod http;
 #[tokio::main]
 async fn main() {
     let cors = CorsLayer::new()
-        .allow_origin(Any);
+        .allow_methods([axum::http::Method::GET, axum::http::Method::POST])
+        .allow_origin("http://localhost:3000".parse::<axum::http::HeaderValue>().unwrap())
+        .allow_headers([axum::http::header::CONTENT_TYPE]);
+
+        //.allow_origin("http://localhost:3000".parse::<axum::http::HeaderValue>().unwrap())
+        //.allow_headers([axum::http::header::CONTENT_TYPE])
+        //.allow_methods([axum::http::Method::GET, axum::http::Method::POST]);
+        //.max_age(Duration::from_secs(60 * 60));
 
     let pool = PgPoolOptions::new()
         .max_connections(10)
@@ -21,9 +28,9 @@ async fn main() {
         .expect("Failed to connect to database");
 
     let app = Router::new()
-        .layer(cors)
         .nest("/api/ai",    http::ai::router(pool.clone()))
         .nest("/api/auth",  http::auth::router(pool.clone()))
+        .layer(cors)
         .nest("/api/math",  http::math::router(pool.clone()));
 
     let addr = SocketAddr::from(([0, 0, 0, 0], 8000));

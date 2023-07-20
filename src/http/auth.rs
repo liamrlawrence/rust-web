@@ -59,43 +59,90 @@ struct LoginResponse {
 
 async fn login_handler(
     State(pool): State<PgPool>,
-    cookie_jar: CookieJar,
     ExtractHeaderForwarded(ip_address): ExtractHeaderForwarded,
     Json(payload): Json<LoginRequest>,
 ) -> impl IntoResponse {
+    println!("/api/auth/login");        // TODO: Replace with logging middleware
+
+    // TODO: Handle these unwraps / have a better way of getting IP
     let ip_string = &ip_address.to_str().unwrap()[4..];
     let ip_addr: IpNetwork = ip_string.parse().unwrap();
 
-    let row = sqlx::query!(r"
+    let result = sqlx::query!(r"
             SELECT *
             FROM Auth.FN_User_Login($1::TEXT, $2::TEXT, $3::INET);
         ", payload.username, payload.password, ip_addr)
         .fetch_one(&pool)
-        .await.unwrap();
+        .await;
 
-    let new_session_token: String = row.session_id.unwrap();
-    let new_refresh_token: String = row.refresh_token.unwrap();
 
-    let response = LoginResponse {
-        status: 200,
-        message: "Success!".to_string(),
+    let status_code: StatusCode;
+    let cookie_jar: CookieJar;
+    let response: LoginResponse;
+
+    match result {
+        Ok(row) => {
+            let new_session_token: String = row.session_id.unwrap();
+            let new_refresh_token: String = row.refresh_token.unwrap();
+
+            cookie_jar = CookieJar::new()
+                .add(Cookie::build("X-Session-Token", new_session_token)
+                     .path("/")
+                     .secure(true)
+                     .http_only(true)
+                     .finish())
+                .add(Cookie::build("X-Refresh-Token", new_refresh_token)
+                     .path("/")
+                     .secure(true)
+                     .http_only(true)
+                     .finish());
+
+            status_code = StatusCode::OK;
+            response = LoginResponse {
+                status: 200,
+                message: "Success!".to_string(),
+            };
+        },
+
+        Err(e) => {
+            cookie_jar = CookieJar::new();
+
+            match &e {
+                sqlx::Error::Database(db_err) => {
+                    match db_err.message() {
+                        "incorrect username or password" => { 
+                            status_code = StatusCode::UNAUTHORIZED;
+                            response = LoginResponse {
+                                status: 401,
+                                message: format!("{}", db_err.message()),
+                            };
+                        },
+
+                        _ => {
+                            status_code = StatusCode::INTERNAL_SERVER_ERROR;
+                            response = LoginResponse {
+                                status: 500,
+                                message: format!("{}", db_err.message()),
+                            };
+                        },
+                    };
+                },
+
+                _ => {
+                    status_code = StatusCode::INTERNAL_SERVER_ERROR;
+                    response = LoginResponse {
+                        status: 500,
+                        message: format!("Unkown error: {}", e),
+                    };
+                },
+            };
+        },
     };
 
-
     return(
-        StatusCode::OK,
-        cookie_jar
-            .add(Cookie::build("X-Session-Token", new_session_token)
-                 .path("/api/")
-                 .secure(true)
-                 .http_only(true)
-                 .finish())
-            .add(Cookie::build("X-Refresh-Token", new_refresh_token)
-                 .path("/api/")
-                 .secure(true)
-                 .http_only(true)
-                 .finish()),
-        Json(response)
+        status_code,
+        cookie_jar,
+        Json(response),
     )
 }
 
